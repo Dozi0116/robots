@@ -33,9 +33,9 @@ MoveObjectクラス(Object)
 -moveメソッド
 
 Robotクラス(MoveObject)
--is_sclap スクラップか否か
+-sclap スクラップか否か
 -moveメソッド 返り値:移動先に何があったか？
--collisionメソッド スクラップ化などの処理
+-killメソッド
 
 Robotはリスト管理が好ましい(Robotリスト is Noneで調べられる？)
 
@@ -46,6 +46,7 @@ Gameクラス
 -score, level ゲームの基本情報
 -robot_left レベルクリアまでの残りロボット数
 -board[height][width] ゲームボード
+// -collisionメソッド スクラップ化などの処理
 
 before_board[][], after_board[][] 移動に使用するマップ
 
