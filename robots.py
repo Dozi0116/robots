@@ -71,17 +71,17 @@ class Robot(MoveObject):
     def sclap(self, boolean):
         self._sclap = boolean
 
-    def move(self, x, y, absolute = False):
+    def move(self, x, y, game_master, absolute = False):
         if self._sclap == True:
             if absolute == False:
                 x += self._x
                 y += self._y
 
-            if type(after_board[y][x]) == Robot:
+            if type(game_master.after_board[y][x]) == Robot:
                 #collision
-                self.kill()
-                after_board[y][x].kill()
-            elif type(after_board[y][x]) == Player:
+                self.kill(game_master)
+                game_master.after_board[y][x].kill(game_master)
+            elif type(game_master.after_board[y][x]) == Player:
                 #gameover
                 pass
 
@@ -90,8 +90,10 @@ class Robot(MoveObject):
         else:
             pass
 
-    def kill(self):
-        self._sclap = True
+    def kill(self, game_master):
+        if self._sclap == False:
+            self._sclap = True
+            game_master.robot_left -= 1
 
 
 class Game():
@@ -140,42 +142,38 @@ class Game():
     def board(self):
         return self._board
 
+    @property
+    def before_board(self):
+        return self._before_board
+
+    @property
+    def enemy_pos_list(self):
+        return self._enemy_pos_list
+
+    @property
+    def player_pos(pos):
+        return self.player_pos
+
     def setting(self):
-        temp_list = [i for i in range(self._height * self._width)]
-        center_num = self._height // 2 * self._width + self._width // 2
-        obj_indices = []
-        #プレイヤーの場所確保
-        obj_indices.append(temp_list.pop(center_num))
-        for _ in range(self._robot_left):
-            obj_indices.append(temp_list.pop(temp_list.index(random.choice(temp_list))))
+        temp_list = []
+        self._enemy_pos_list = []
+        center_x = self._width // 2
+        center_y = self._height // 2
+        center = (center_y, center_x)
+        for y in range(self._height):
+            for x in range(self._width):
+                if (y, x) != center:
+                    temp_list.append((y, x))
+        #it = itertools.product(range(self._height), range(self._width))
+        #temp_list = [e for e in it if e != center]
 
-        #マップデータ埋め込み
-        index = obj_indices.pop()
-        self._board[index // self._width][index % self._width] = Player(x = index % self._width, y = index // self._width)
-        for index in obj_indices.pop():
-            self._board[i // self._width][i % self._width] = Robot(x = i % self._width, y = i // self._width)
+        random.shuffle(temp_list)
+        for y, x in temp_list[:self._robot_left]:
+            self._board[y][x] = Robot(y = y, x = x)
+            self._enemy_pos_list.append((y, x))
 
-
-    # def setting(self):
-    #     temp_list = [None for i in range(self._height * self._width)]
-    #     temp_list[0] = 'Player'
-    #     for i in range(1, self._robot_left):
-    #         temp_list[i] = 'Robot'
-    #
-    #     #プレイヤーを中心に
-    #     random.shuffle(temp_list)
-    #     center_num = self._height // 2 * self._width + self._width // 2
-    #     print(center_num)
-    #     for i in range(len(temp_list)):
-    #         if temp_list[i] == 'Player':
-    #             temp_list[i], temp_list[center_num] = temp_list[center_num], temp_list[i]
-    #
-    #     #マップデータ埋め込み
-    #     for i in range(len(temp_list)):
-    #         if temp_list[i] == 'Robot':
-    #             self._board[i // self._width][i % self._width] = Robot(x = i % self._width, y = i // self._width)
-    #         elif temp_list[i] == 'Player':
-    #             self._board[i // self._width][i % self._width] = Player(x = i % self._width, y = i // self._width)
+        self._board[center_y][center_x] = Player(y = center_y, x = center_x)
+        self._player_pos = (center_y, center_x)
 
     def show(self):
         print('-' * (self._width + 2))
@@ -199,9 +197,30 @@ class Game():
 
         print('-' * (self._width + 2))
 
-    def action(self):
+    def teleport(self):
+        pos_list = []
+        for y in range(self._height):
+            for x in range(self._width):
+                if type(self._board[y][x]) != Robot:
+                    pos_list.append((y, x))
+
+        pos = random.choice(pos_list)
+        return tuple((a-b) for a,b in zip(pos, self._player_pos))
+
+    def action(self, command):
+        self._before_board = list(self._board) #中身のコピー
+        #(y, x)の順で入れる
+        if command == 0:
+            tp = self.teleport()
+        else:
+            tp = (None, None)
+        cmd_to_move = [tp,(1,-1),(1,0),(1,1),(0,-1),(0,0),(0,1),(-1,-1),(-1,0),(-1,1)]
+        move = cmd_to_move[command]
         #各オブジェクトの移動
         #まずはプレイヤー
+
+
+
 
 
 
@@ -236,7 +255,7 @@ def main_game(game_master):
     while True:
         game_master.show()
         command = read_command(game_master)
-        game_master.action()
+        game_master.action(command)
 
 
 def postprocess_game():
