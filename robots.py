@@ -1,5 +1,18 @@
 import random
 
+def tuple_calc(*tuples, ope):
+    ans_list = [0] * len(tuples[0])
+    first_flg = True
+    for tp in tuples:
+        for i in range(len(tp)):
+            if ope == 'add' or first_flg == True: #初めの数から後ろを引いていくための準備
+                ans_list[i] += tp[i]
+            elif ope == 'sub':
+                ans_list[i] -= tp[i]
+        first_flg = False
+
+    return tuple(ans_list)
+
 
 class Object():
     def __init__(self, x = -1, y = -1):
@@ -45,16 +58,13 @@ class Player(MoveObject):
     def __init__(self, x, y):
         super().__init__(x, y)
 
-    def move(self, x, y, absolute = False):
+    def move(self, x, y, game_master, absolute = False):
         if absolute == False:
             x += self._x
             y += self._y
 
-        if before_board[y][x] is None:
-            super().move(x, y)
-        else:
-            #移動できない
-            pass
+        super().move(x, y)
+        game_master.player_pos = (y, x)
 
 
 class Robot(MoveObject):
@@ -103,6 +113,8 @@ class Game():
         self._width = width
         self._robot_left = level * 5
         self._board = [[None for i in range(height)] for j in range(width)]
+        self._before_board = list(self._board)
+        self._after_board = list(self._board)
 
     @property
     def level(self):
@@ -142,13 +154,26 @@ class Game():
     def board(self):
         return self._board
 
+    @board_element.setter
+    def board_element(self, pos):
+        (y, x) = pos
+        return self._board[y][x]
+
     @property
     def before_board(self):
         return self._before_board
 
     @property
+    def after_board(self):
+        return self._after_board
+
+    @property
     def enemy_pos_list(self):
         return self._enemy_pos_list
+
+    @player_pos.setter
+    def player_pos(self, tp):
+        self._player_pos = tp
 
     @property
     def player_pos(pos):
@@ -205,10 +230,14 @@ class Game():
                     pos_list.append((y, x))
 
         pos = random.choice(pos_list)
-        return tuple((a-b) for a,b in zip(pos, self._player_pos))
+        print(pos, self._player_pos)
+        # return tuple((a-b) for a,b in zip(pos, self._player_pos))
+        return tuple_calc(pos, self._player_pos, ope='sub')
 
     def action(self, command):
         self._before_board = list(self._board) #中身のコピー
+        self._after_board = [[None for i in range(self._height)] \
+        for j in range(self._width)]
         #(y, x)の順で入れる
         if command == 0:
             tp = self.teleport()
@@ -218,10 +247,21 @@ class Game():
         move = cmd_to_move[command]
         #各オブジェクトの移動
         #まずはプレイヤー
+        print(move)
+        (move_pos_y, move_pos_x) = tuple_calc(self._player_pos, move, ope='add')
+        if move_pos_x in range(self._width) \
+        and move_pos_y in range(self._height) \
+        and type(self._before_board[move_pos_y][move_pos_x]) != Robot:
+            #移動ができる
+            self._after_board[move_pos_y][move_pos_x] \
+            = self.board_element(self._player_pos)
+            self._after_board[move_pos_y][move_pos_x].move(move_pos_y, move_pos_x, game_master)
 
 
-
-
+        # temp move
+        for (enemy_pos_y, enemy_pos_x) in self._enemy_pos_list:
+            self._after_board[enemy_pos_y][enemy_pos_x] = self.board_element((enemy_pos_y, enemy_pos_x))
+        self._board = list(self._after_board)
 
 
 def read_command(game_master):
