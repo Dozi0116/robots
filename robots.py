@@ -185,7 +185,7 @@ class Robot(MoveObject):
         if self._sclap == False:
             self._sclap = True
             game_master.robot_left -= 1
-            game_master.score += game_master.level * 1
+            game_master.score += 1
 
 
 # ゲームの中心となる情報をすべて持っているクラス。
@@ -429,6 +429,7 @@ def main_game(game_master):
                 #level up
                 print('CLEAR! LEVEL' + str(game_master.level) + ' => ' + str(game_master.level + 1))
                 game_master.level += 1
+                game_master.score += game_master.level * 10
                 game_master.setting()
 
             else:
