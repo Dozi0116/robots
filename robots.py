@@ -1,5 +1,8 @@
 import random
 
+
+# タプルの計算をするプログラム
+# 初めに入った数からopeに従い計算していき、結果のタプルを返す。
 def tuple_calc(*tuples, ope):
     ans_list = [0] * len(tuples[0])
     first_flg = True
@@ -13,7 +16,52 @@ def tuple_calc(*tuples, ope):
 
     return tuple(ans_list)
 
+# Enter入力無しで入力処理を行うクラス。
+# Win版とUNIX版の2種類が用意されていて、import状況に応じて自動的に分岐される。
+class _Getch:
+    """Gets a single character from standard input.  Does not echo to the
+screen."""
+    def __init__(self):
+        try:
+            self.impl = _GetchWindows()
+        except ImportError:
+            self.impl = _GetchUnix()
 
+    def __call__(self): return self.impl().decode()
+
+
+# UNIX版
+# stdinから1文字読み込んで、読み込んだ文字を返す。
+# この時、副作用として、b'\00'が入ってしまう。
+class _GetchUnix:
+    def __init__(self):
+        import tty, sys
+
+    def __call__(self):
+        import sys, tty, termios
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+
+# Win版
+# msvcrt内蔵の関数を呼出して、その値を返すだけ。
+class _GetchWindows:
+    def __init__(self):
+        import msvcrt
+
+    def __call__(self):
+        import msvcrt
+        return msvcrt.getch()
+
+
+# ゲームボードの上に存在するオブジェクトは必ずこのクラスを継承して作る
+# オブジェクトはx,yの座標を持っている。
 class Object():
     def __init__(self, x = -1, y = -1):
         self._x, self._y = x, y
@@ -45,7 +93,7 @@ class Object():
     def y(self, y):
         self._y = y
 
-
+# ゲームボード上を動き回るクラスはこのクラスを継承する。
 class MoveObject(Object):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -54,10 +102,11 @@ class MoveObject(Object):
         self._x = x
         self._y = y
 
+# MoveObjectを継承したPlayerクラス
+# 移動するときに、オブジェクトが存在していたら動けない。
 class Player(MoveObject):
     def __init__(self, x, y):
         super().__init__(x, y)
-
 
     # 移動したかどうかをTFで返す
     def move(self, x, y, game_master, absolute = False):
@@ -94,7 +143,7 @@ class Robot(MoveObject):
     def sclap(self, boolean):
         self._sclap = boolean
 
-    #GameOverか否かを返す
+    # 返り値として、GameOverか否かを返す。
     def move(self, game_master):
         if self._sclap == False:
             #移動する座標の算出
@@ -130,6 +179,8 @@ class Robot(MoveObject):
             #スクラップだから動かない
             game_master.after_board[self._y][self._x] = self
 
+    #まだスクラップになっていないなら、ロボ残数を減らし、スクラップ状態にする。
+    #delとかを使って書いたほうが良かったかも
     def kill(self, game_master):
         if self._sclap == False:
             self._sclap = True
@@ -137,6 +188,8 @@ class Robot(MoveObject):
             game_master.score += game_master.level * 1
 
 
+# ゲームの中心となる情報をすべて持っているクラス。
+# 基本的に、この中からゲームを操作する。
 class Game():
     def __init__(self, level = 1, height = 10, width = 10):
         self._level = level
@@ -147,6 +200,7 @@ class Game():
         self._before_board = list(self._board)
         self._after_board = list(self._board)
         self._score = 0
+        self._MAX_ROBOT = 40
 
     @property
     def level(self):
@@ -157,8 +211,8 @@ class Game():
         self._level = level
         #残りロボ数も更新
         self._robot_left = level * 5
-        if self._robot_left > 40:
-            self._robot_left = 40
+        if self._robot_left > self._MAX_ROBOT:
+            self._robot_left = self._MAX_ROBOT
 
     @property
     def score(self):
@@ -196,10 +250,6 @@ class Game():
     def board(self):
         return self._board
 
-    def board_element(self, pos):
-        (y, x) = pos
-        return self._board[y][x]
-
     @property
     def before_board(self):
         return self._before_board
@@ -216,7 +266,13 @@ class Game():
     def player_pos(self, tp):
         self._player_pos = tp
 
+    #引数で(y, x)の順で座標を渡すと、その座標に何がいるかを返す関数
+    def board_element(self, pos):
+        (y, x) = pos
+        return self._board[y][x]
 
+    #ゲームの初期状態を生成するクラス。
+    #レベルアップごとに呼び出される。
     def setting(self):
         self._board = [[None for i in range(self._height)] for j in range(self._width)]
         temp_list = []
@@ -239,6 +295,7 @@ class Game():
 
     def show(self):
         #ゲームボード表示
+        bug_flag = False
         print('-' * (self._width + 2))
         for y in range(self._height):
             print('|', end = '')
@@ -255,14 +312,21 @@ class Game():
                 else:
                     #本来ありえない表示
                     print('#', end = '')
+                    bug_flag = True
 
             print('|')
 
         print('-' * (self._width + 2))
 
+        if bug_flag == True:
+            #あり得ない表示が出た時のメッセージ
+            print('予期せぬエラーが発生しています。')
+            print('直ちに開発者に連絡してください。')
+
         #ゲームステータス表示
         print('lv:'+str(self._level)+', score:'+str(self._score))
 
+    #ロボットがいない場所からランダムに1地点を選び、座標を(y, x)の順で返す関数
     def teleport(self):
         pos_list = []
         for y in range(self._height):
@@ -271,7 +335,6 @@ class Game():
                     pos_list.append((y, x))
 
         pos = random.choice(pos_list)
-        # return tuple((a-b) for a,b in zip(pos, self._player_pos))
         return tuple_calc(pos, self._player_pos, ope='sub')
 
     #なにかしらのイベントが有る場合、Trueで返す
@@ -296,18 +359,14 @@ class Game():
                     if type(self.board_element((enemy_pos_y, enemy_pos_x))) == Robot:
                         gameover = self.board_element((enemy_pos_y, enemy_pos_x)).move(game_master)
                         if gameover == True:
-                            #print('game over!')
+                            #game over!
                             return True
-
         else:
             #行動せずに終了 = before状態のまま
             self._after_board = list(self._before_board)
 
-
-
-
         if self._robot_left <= 0:
-            #print('level up!')
+            #level up!
             return True
 
         #最後にafter状態を現在の状態にして終了
@@ -315,18 +374,42 @@ class Game():
         #正常終了はFalse
         return False
 
-
+#どの方向に動くかを読み取る関数
 def read_command(game_master):
 
-    #cursesでできたら変える
-    print('next move >', end=' ')
+    print('press "h" key to open help')
     while True:
         try:
-            command = int(input())
+            getch = _Getch()
+            x = getch()
+            command = int(x)
+
         except ValueError:
-            pass
-            print('error. input is integer')
+            #hキーならヘルプを表示
+            if x == 'h':
+                print('\nhow to operate')
+                print('7 8 9')
+                print('4 @ 6')
+                print('1 2 3')
+                print('\n0 ... random teleport')
+                print('5 ... stand-by')
+
+            #ctr-c、EOFが入力されたら、強制終了
+            elif x == '\x03':
+                # ctr-c
+                raise KeyboardInterrupt
+            elif x == '\x04':
+                # EOF
+                raise EOFError
+
+
+            #数字を読み込んだ直後の末端記号が入ったときは読み飛ばす
+            #それ以外の文字は入力範囲外のものだから、エラーメッセージを表示
+            elif x != '\x00':
+                print('error. input is integer')
+
         else:
+            #コマンドは0～9、つまりrange(10)
             if command in range(9+1):
                 break
             else:
@@ -334,14 +417,7 @@ def read_command(game_master):
 
     return command
 
-def init_game():
-    pass
-
-def preprocess_game():
-    #フィールドサイズとかを変更する処理があるなら
-    #ここで変更する
-    return Game()
-
+#ゲーム開始から終了までを司る関数
 def main_game(game_master):
     game_master.setting()
     while True:
@@ -361,21 +437,30 @@ def main_game(game_master):
                 return None
 
 
+#ゲームに必要な前準備を書いておく
+#今回みたいに1行だったら関数にする必要ないが、拡張したときにわかりやすくなるように
+def init_game():
+    game_master = Game()
+    return game_master
 
+
+#ゲーム終了後の処理を行う関数
+#主に、続けてプレイするかを聞いている。
 def postprocess_game():
+    print('continue? y/n')
     while True:
-        print('continue? y/n')
-        command = input()
+        getch = _Getch()
+        command = getch()
         if command in {'y', 'n'}:
             break
 
     return command
 
-if __name__ == '__main__':
-    init_game()
 
+if __name__ == '__main__':
+
+    game_master = init_game()
     while True:
-        game_master = preprocess_game()
         main_game(game_master)
         cont = postprocess_game()
 
