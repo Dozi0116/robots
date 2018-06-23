@@ -16,18 +16,21 @@ def tuple_calc(*tuples, ope):
 
     return tuple(ans_list)
 
+
 # Enter入力無しで入力処理を行うクラス。
 # Win版とUNIX版の2種類が用意されていて、import状況に応じて自動的に分岐される。
 class _Getch:
     """Gets a single character from standard input.  Does not echo to the
-screen."""
+    screen."""
     def __init__(self):
         try:
             self.impl = _GetchWindows()
         except ImportError:
             self.impl = _GetchUnix()
 
-    def __call__(self): return self.impl().decode()
+    #この時、得られるのはb(バイト列)である。
+    #そのため、普通の文字として扱うため、.decode()を書いている。
+    def __call__(self): return self.impl()
 
 
 # UNIX版
@@ -57,7 +60,7 @@ class _GetchWindows:
 
     def __call__(self):
         import msvcrt
-        return msvcrt.getch()
+        return msvcrt.getch().decode()
 
 
 # ゲームボードの上に存在するオブジェクトは必ずこのクラスを継承して作る
@@ -93,6 +96,7 @@ class Object():
     def y(self, y):
         self._y = y
 
+
 # ゲームボード上を動き回るクラスはこのクラスを継承する。
 class MoveObject(Object):
     def __init__(self, x, y):
@@ -101,6 +105,7 @@ class MoveObject(Object):
     def move(self, x, y):
         self._x = x
         self._y = y
+
 
 # MoveObjectを継承したPlayerクラス
 # 移動するときに、オブジェクトが存在していたら動けない。
@@ -331,7 +336,7 @@ class Game():
         pos_list = []
         for y in range(self._height):
             for x in range(self._width):
-                if type(self._board[y][x]) != Robot:
+                if isinstance(self._board[y][x], Object) == True:
                     pos_list.append((y, x))
 
         pos = random.choice(pos_list)
@@ -373,6 +378,7 @@ class Game():
         self._board = list(self._after_board)
         #正常終了はFalse
         return False
+
 
 #どの方向に動くかを読み取る関数
 def read_command(game_master):
@@ -416,6 +422,7 @@ def read_command(game_master):
                 print('error. range is 1-9')
 
     return command
+
 
 #ゲーム開始から終了までを司る関数
 def main_game(game_master):
