@@ -435,8 +435,8 @@ def main_game(game_master):
             if game_master.robot_left <= 0:
                 #level up
                 print('CLEAR! LEVEL' + str(game_master.level) + ' => ' + str(game_master.level + 1))
-                game_master.level += 1
                 game_master.score += game_master.level * 10
+                game_master.level += 1
                 game_master.setting()
 
             else:
