@@ -336,7 +336,7 @@ class Game():
         pos_list = []
         for y in range(self._height):
             for x in range(self._width):
-                if isinstance(self._board[y][x], Object) == True:
+                if isinstance(self._board[y][x], Object) == False:
                     pos_list.append((y, x))
 
         pos = random.choice(pos_list)
