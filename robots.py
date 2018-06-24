@@ -35,7 +35,6 @@ class _Getch:
 
 # UNIX版
 # stdinから1文字読み込んで、読み込んだ文字を返す。
-# この時、副作用として、b'\00'が入ってしまう。
 class _GetchUnix:
     def __init__(self):
         import tty, sys
